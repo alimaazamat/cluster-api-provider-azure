@@ -95,27 +95,47 @@ func (c *AzureCluster) setVnetDefaults() {
 }
 
 func (c *AzureCluster) setSubnetDefaults() {
+	fmt.Println("ALIMA AZAMAT DEBUGGING")
+	fmt.Println("DEBUG: Starting setSubnetDefaults for AzureCluster:", c.Namespace, "/", c.Name)
+	var clusterUpdateCount, cpUpdateCount, nodeUpdateCount int
+
+	// cluster subnet
 	clusterSubnet, err := c.Spec.NetworkSpec.GetSubnet(SubnetCluster)
-	clusterSubnetExists := err == nil
-	if clusterSubnetExists {
+	if err != nil {
+		fmt.Printf("DEBUG: No subnet with role 'cluster' found. Error: %v\n", err)
+	} else {
+		fmt.Printf("DEBUG: Found cluster subnet before defaulting: %+v\n", clusterSubnet)
+		// Apply cluster subnet defaults (this may set CIDRBlocks and other fields)
 		clusterSubnet.setClusterSubnetDefaults(c.ObjectMeta.Name)
+		fmt.Printf("DEBUG: After applying cluster subnet defaults: %+v\n", clusterSubnet)
 		c.Spec.NetworkSpec.UpdateSubnet(clusterSubnet, SubnetCluster)
+		clusterUpdateCount++
+		fmt.Printf("DEBUG: Cluster subnet updated count: %d\n", clusterUpdateCount)
 	}
 
+	// control plane subnet
 	if c.Spec.ControlPlaneEnabled {
-		/* if there is a cp subnet set defaults
-		   if no cp subnet and cluster subnet create a default cp subnet */
 		cpSubnet, errcp := c.Spec.NetworkSpec.GetSubnet(SubnetControlPlane)
-		if errcp == nil {
-			cpSubnet.setControlPlaneSubnetDefaults(c.ObjectMeta.Name)
-			c.Spec.NetworkSpec.UpdateSubnet(cpSubnet, SubnetControlPlane)
-		} else if !clusterSubnetExists {
+		if errcp != nil {
+			fmt.Printf("DEBUG: No control-plane subnet found. Error: %v\n", errcp)
+			// Create and default a new control-plane subnet if none exists
 			cpSubnet = SubnetSpec{SubnetClassSpec: SubnetClassSpec{Role: SubnetControlPlane}}
 			cpSubnet.setControlPlaneSubnetDefaults(c.ObjectMeta.Name)
+			fmt.Printf("DEBUG: Created new control-plane subnet: %+v\n", cpSubnet)
 			c.Spec.NetworkSpec.Subnets = append(c.Spec.NetworkSpec.Subnets, cpSubnet)
+			cpUpdateCount++
+			fmt.Printf("DEBUG: Control-plane subnet created and updated count: %d\n", cpUpdateCount)
+		} else {
+			fmt.Printf("DEBUG: Found control-plane subnet before defaulting: %+v\n", cpSubnet)
+			cpSubnet.setControlPlaneSubnetDefaults(c.ObjectMeta.Name)
+			fmt.Printf("DEBUG: After applying control-plane subnet defaults: %+v\n", cpSubnet)
+			c.Spec.NetworkSpec.UpdateSubnet(cpSubnet, SubnetControlPlane)
+			cpUpdateCount++
+			fmt.Printf("DEBUG: Control-plane subnet updated count: %d\n", cpUpdateCount)
 		}
 	}
 
+	// node subnet
 	var nodeSubnetFound bool
 	var nodeSubnetCounter int
 	for i, subnet := range c.Spec.NetworkSpec.Subnets {
@@ -124,11 +144,15 @@ func (c *AzureCluster) setSubnetDefaults() {
 		}
 		nodeSubnetCounter++
 		nodeSubnetFound = true
+		fmt.Printf("DEBUG: Found node subnet before defaulting (instance %d): %+v\n", nodeSubnetCounter, subnet)
 		subnet.setNodeSubnetDefaults(c.ObjectMeta.Name, nodeSubnetCounter)
+		fmt.Printf("DEBUG: After applying node subnet defaults (instance %d): %+v\n", nodeSubnetCounter, subnet)
 		c.Spec.NetworkSpec.Subnets[i] = subnet
+		nodeUpdateCount++
+		fmt.Printf("DEBUG: Node subnet (instance %d) updated count: %d\n", nodeSubnetCounter, nodeUpdateCount)
 	}
-
-	if !nodeSubnetFound && !clusterSubnetExists {
+	if !nodeSubnetFound {
+		fmt.Println("DEBUG: No node subnet found. Creating a default node subnet.")
 		nodeSubnet := SubnetSpec{
 			SubnetClassSpec: SubnetClassSpec{
 				Role:       SubnetNode,
@@ -147,8 +171,12 @@ func (c *AzureCluster) setSubnetDefaults() {
 				},
 			},
 		}
+		fmt.Printf("DEBUG: Created default node subnet: %+v\n", nodeSubnet)
 		c.Spec.NetworkSpec.Subnets = append(c.Spec.NetworkSpec.Subnets, nodeSubnet)
+		nodeUpdateCount++
+		fmt.Printf("DEBUG: Default node subnet created and updated. Node update count: %d\n", nodeUpdateCount)
 	}
+	fmt.Println("DEBUG: Finished setSubnetDefaults for AzureCluster:", c.Namespace, "/", c.Name)
 }
 
 func (s *SubnetSpec) setNodeSubnetDefaults(clusterName string, index int) {
@@ -208,7 +236,12 @@ func (s *SubnetSpec) setClusterSubnetDefaults(clusterName string) {
 	if !s.IsIPv6Enabled() && s.ID == "" && s.NatGateway.NatGatewayIP.Name == "" {
 		s.NatGateway.NatGatewayIP.Name = generateNatGatewayIPName(s.NatGateway.Name)
 	}
-	s.setDefaults(DefaultClusterSubnetCIDR)
+	fmt.Println("CIDRBlocks before checking defaulting:", s.CIDRBlocks)
+	if len(s.CIDRBlocks) == 0 {
+		fmt.Println("CIDRBlocks is empty, applying default:", DefaultClusterSubnetCIDR)
+		s.setDefaults(DefaultClusterSubnetCIDR)
+		fmt.Println("CIDRBlocks after applying default:", s.CIDRBlocks)
+	}
 	s.SecurityGroup.SecurityGroupClass.setDefaults()
 }
 

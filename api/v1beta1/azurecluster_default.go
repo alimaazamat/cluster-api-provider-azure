@@ -121,17 +121,17 @@ func (c *AzureCluster) setSubnetDefaults() {
 			// Create and default a new control-plane subnet if none exists
 			cpSubnet = SubnetSpec{SubnetClassSpec: SubnetClassSpec{Role: SubnetControlPlane}}
 			cpSubnet.setControlPlaneSubnetDefaults(c.ObjectMeta.Name)
-			fmt.Printf("DEBUG: Created new control-plane subnet: %+v\n", cpSubnet)
+			fmt.Printf("DEBUG: CIDRBlocks after creating new control-plane subnet: %v\n", cpSubnet.CIDRBlocks)
 			c.Spec.NetworkSpec.Subnets = append(c.Spec.NetworkSpec.Subnets, cpSubnet)
 			cpUpdateCount++
 			fmt.Printf("DEBUG: Control-plane subnet created and updated count: %d\n", cpUpdateCount)
 		} else {
-			fmt.Printf("DEBUG: Found control-plane subnet before defaulting: %+v\n", cpSubnet)
+			fmt.Printf("DEBUG: CIDRBlocks before applying control-plane subnet defaults: %v\n", cpSubnet.CIDRBlocks)
 			cpSubnet.setControlPlaneSubnetDefaults(c.ObjectMeta.Name)
-			fmt.Printf("DEBUG: After applying control-plane subnet defaults: %+v\n", cpSubnet)
+			fmt.Printf("DEBUG: CIDRBlocks after applying control-plane subnet defaults: %v\n", cpSubnet.CIDRBlocks)
+			fmt.Printf("DEBUG: CIDRBlocks before UpdateSubnet: %v\n", cpSubnet.CIDRBlocks)
 			c.Spec.NetworkSpec.UpdateSubnet(cpSubnet, SubnetControlPlane)
-			cpUpdateCount++
-			fmt.Printf("DEBUG: Control-plane subnet updated count: %d\n", cpUpdateCount)
+			fmt.Printf("DEBUG: CIDRBlocks after UpdateSubnet: %v\n", cpSubnet.CIDRBlocks)
 		}
 	}
 
@@ -144,9 +144,9 @@ func (c *AzureCluster) setSubnetDefaults() {
 		}
 		nodeSubnetCounter++
 		nodeSubnetFound = true
-		fmt.Printf("DEBUG: Found node subnet before defaulting (instance %d): %+v\n", nodeSubnetCounter, subnet)
+		fmt.Printf("DEBUG: CIDRBlocks for node subnet (instance %d) before defaulting: %v\n", nodeSubnetCounter, subnet.CIDRBlocks)
 		subnet.setNodeSubnetDefaults(c.ObjectMeta.Name, nodeSubnetCounter)
-		fmt.Printf("DEBUG: After applying node subnet defaults (instance %d): %+v\n", nodeSubnetCounter, subnet)
+		fmt.Printf("DEBUG: CIDRBlocks for node subnet (instance %d) after defaulting: %v\n", nodeSubnetCounter, subnet.CIDRBlocks)
 		c.Spec.NetworkSpec.Subnets[i] = subnet
 		nodeUpdateCount++
 		fmt.Printf("DEBUG: Node subnet (instance %d) updated count: %d\n", nodeSubnetCounter, nodeUpdateCount)
@@ -183,7 +183,9 @@ func (s *SubnetSpec) setNodeSubnetDefaults(clusterName string, index int) {
 	if s.Name == "" {
 		s.Name = withIndex(generateNodeSubnetName(clusterName), index)
 	}
+	fmt.Printf("DEBUG: setNodeSubnetDefaults: CIDRBlocks before applying node subnet defaults: %v\n", s.CIDRBlocks)
 	s.SubnetClassSpec.setDefaults(fmt.Sprintf(DefaultNodeSubnetCIDRPattern, index))
+	fmt.Printf("DEBUG: setNodeSubnetDefaults: CIDRBlocks after applying node subnet defaults: %v\n", s.CIDRBlocks)
 
 	if s.SecurityGroup.Name == "" {
 		s.SecurityGroup.Name = generateNodeSecurityGroupName(clusterName)
@@ -211,8 +213,9 @@ func (s *SubnetSpec) setControlPlaneSubnetDefaults(clusterName string) {
 	if s.Name == "" {
 		s.Name = generateControlPlaneSubnetName(clusterName)
 	}
-
+	fmt.Printf("DEBUG:setControlPlaneSubnetDefaults: CIDRBlocks before setDefaults: %v\n", s.CIDRBlocks)
 	s.SubnetClassSpec.setDefaults(DefaultControlPlaneSubnetCIDR)
+	fmt.Printf("DEBUG:setControlPlaneSubnetDefaults: CIDRBlocks after setDefaults: %v\n", s.CIDRBlocks)
 
 	if s.SecurityGroup.Name == "" {
 		s.SecurityGroup.Name = generateControlPlaneSecurityGroupName(clusterName)

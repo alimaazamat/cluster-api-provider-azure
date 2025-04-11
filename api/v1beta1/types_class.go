@@ -17,6 +17,8 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -553,9 +555,11 @@ func (vc *VnetClassSpec) setDefaults() {
 
 // setDefaults sets default values for SubnetClassSpec.
 func (sc *SubnetClassSpec) setDefaults(cidr string) {
+	fmt.Printf("DEBUG:setDefaults for SubnetClassSpec: CIDRBlocks before setDefaults: %v\n", sc.CIDRBlocks)
 	if len(sc.CIDRBlocks) == 0 {
 		sc.CIDRBlocks = []string{cidr}
 	}
+	fmt.Printf("DEBUG:setDefaults for SubnetClassSpec: CIDRBlocks after setDefaults: %v\n", sc.CIDRBlocks)
 }
 
 // setDefaults sets default values for SecurityGroupClass.

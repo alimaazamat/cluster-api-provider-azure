@@ -182,6 +182,9 @@ func validateNetworkSpec(controlPlaneEnabled bool, networkSpec NetworkSpec, old 
 		}
 
 		cidrBlocks = controlPlaneSubnet.CIDRBlocks
+		fmt.Println("validateNetworkSpec DEBUGGING: ")
+		fmt.Println("DEBUG: controlPlaneSubnet.Name: \n", controlPlaneSubnet.Name)
+		fmt.Println("DEBUG: controlPlaneSubnet.CIDRBlocks: \n", controlPlaneSubnet.CIDRBlocks)
 		allErrs = append(allErrs, validateAPIServerLB(networkSpec.APIServerLB, old.APIServerLB, cidrBlocks, fldPath.Child("apiServerLB"))...)
 	}
 

@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
 	"reflect"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -44,7 +45,19 @@ var _ webhook.Defaulter = &AzureCluster{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
 func (c *AzureCluster) Default() {
+	fmt.Println("WEBHOOK DEBUGGING BEFORE SETTING DEFAULTS")
+	for _, subnet := range c.Spec.NetworkSpec.Subnets {
+		fmt.Println("DEBUG: Name: \n", subnet.Name)
+		fmt.Println("DEBUG: Role: \n", subnet.Role)
+		fmt.Println("DEBUG: CIDRBlocks: \n", subnet.CIDRBlocks)
+	}
 	c.setDefaults()
+	fmt.Println("WEBHOOK DEBUGGING AFTER SETTING DEFAULTS")
+	for _, subnet := range c.Spec.NetworkSpec.Subnets {
+		fmt.Println("DEBUG: Name: \n", subnet.Name)
+		fmt.Println("DEBUG: Role: \n", subnet.Role)
+		fmt.Println("DEBUG: CIDRBlocks: \n", subnet.CIDRBlocks)
+	}
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
@@ -159,6 +172,9 @@ func (c *AzureCluster) validateSubnetUpdate(old *AzureCluster) field.ErrorList {
 	}
 	for i, subnet := range c.Spec.NetworkSpec.Subnets {
 		if oldSubnet, ok := oldSubnetMap[subnet.Name]; ok {
+			fmt.Printf("DEBUG: Validating subnet %s\n", subnet.Name)
+			fmt.Printf("DEBUG: Old CIDRBlocks: %v\n", oldSubnet.CIDRBlocks)
+			fmt.Printf("DEBUG: New CIDRBlocks: %v\n", subnet.CIDRBlocks)
 			// Verify the CIDR blocks haven't changed for an owned Vnet.
 			// A non-owned Vnet's CIDR block can change based on what's
 			// defined in the spec vs what's been loaded from Azure directly.
@@ -166,6 +182,7 @@ func (c *AzureCluster) validateSubnetUpdate(old *AzureCluster) field.ErrorList {
 			// moments before the Vnet is created (because the tags haven't been
 			// set yet) but once the Vnet has been created it becomes immutable.
 			if old.Spec.NetworkSpec.Vnet.Tags.HasOwned(old.Name) && !reflect.DeepEqual(subnet.CIDRBlocks, oldSubnet.CIDRBlocks) {
+				fmt.Printf("DEBUG: CIDRBlocks mismatch for subnet %s. Old: %v, New: %v\n", subnet.Name, oldSubnet.CIDRBlocks, subnet.CIDRBlocks)
 				allErrs = append(allErrs,
 					field.Invalid(field.NewPath("spec", "networkSpec", "subnets").Index(oldSubnetIndex[subnet.Name]).Child("CIDRBlocks"),
 						c.Spec.NetworkSpec.Subnets[i].CIDRBlocks, "field is immutable"),

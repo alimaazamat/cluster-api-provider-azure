@@ -17,6 +17,8 @@ limitations under the License.
 package converters
 
 import (
+	"fmt"
+
 	asonetworkv1 "github.com/Azure/azure-service-operator/v2/api/network/v1api20201101"
 	"k8s.io/utils/ptr"
 )
@@ -24,10 +26,14 @@ import (
 // GetSubnetAddresses returns the address prefixes contained in an ASO subnet.
 func GetSubnetAddresses(subnet asonetworkv1.VirtualNetworksSubnet) []string {
 	var addresses []string
+	fmt.Println("subnet.Status.AddressPrefix: ", subnet.Status.AddressPrefix)
+	fmt.Println("subnet.Status.AddressPrefixes: ", subnet.Status.AddressPrefixes)
 	if subnet.Status.AddressPrefix != nil {
 		addresses = []string{ptr.Deref(subnet.Status.AddressPrefix, "")}
+		fmt.Println("subnet.Status.AddressPrefix not nil then addresses = ", addresses)
 	} else if subnet.Status.AddressPrefixes != nil {
 		addresses = subnet.Status.AddressPrefixes
+		fmt.Println("subnet.Status.AddressPrefixes not nil then addresses = ", addresses)
 	}
 	return addresses
 }

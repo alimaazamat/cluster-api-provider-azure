@@ -26,12 +26,12 @@ import (
 // GetSubnetAddresses returns the address prefixes contained in an ASO subnet.
 func GetSubnetAddresses(subnet asonetworkv1.VirtualNetworksSubnet) []string {
 	var addresses []string
-	fmt.Println("subnet.Status.AddressPrefix: ", subnet.Status.AddressPrefix)
+	fmt.Println("subnet.Status.AddressPrefix: ", ptr.Deref(subnet.Status.AddressPrefix, ""))
 	fmt.Println("subnet.Status.AddressPrefixes: ", subnet.Status.AddressPrefixes)
 	if subnet.Status.AddressPrefix != nil {
 		addresses = []string{ptr.Deref(subnet.Status.AddressPrefix, "")}
 		fmt.Println("subnet.Status.AddressPrefix not nil then addresses = ", addresses)
-	} else if subnet.Status.AddressPrefixes != nil {
+	} else if subnet.Status.AddressPrefixes != nil { //empty
 		addresses = subnet.Status.AddressPrefixes
 		fmt.Println("subnet.Status.AddressPrefixes not nil then addresses = ", addresses)
 	}

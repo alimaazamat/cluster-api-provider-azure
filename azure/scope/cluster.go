@@ -715,7 +715,7 @@ func (s *ClusterScope) Subnet(name string) infrav1.SubnetSpec {
 func (s *ClusterScope) SetSubnet(subnetSpec infrav1.SubnetSpec) {
 	for i, sn := range s.AzureCluster.Spec.NetworkSpec.Subnets {
 		if sn.Name == subnetSpec.Name {
-			s.AzureCluster.Spec.NetworkSpec.Subnets[i] = subnetSpec
+			s.AzureCluster.Spec.NetworkSpec.Subnets[i] = subnetSpec //don't update spec update the status
 			return
 		}
 	}
@@ -735,7 +735,7 @@ func (s *ClusterScope) SetNatGatewayIDInSubnets(name string, id string) {
 func (s *ClusterScope) UpdateSubnetCIDRs(name string, cidrBlocks []string) {
 	subnetSpecInfra := s.Subnet(name)
 	subnetSpecInfra.CIDRBlocks = cidrBlocks
-	s.SetSubnet(subnetSpecInfra)
+	s.SetSubnet(subnetSpecInfra) //culprit
 }
 
 // UpdateSubnetID updates the subnet ID for the subnet with the same name.

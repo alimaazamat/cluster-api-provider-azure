@@ -18,6 +18,7 @@ package subnets
 
 import (
 	"context"
+	"fmt"
 
 	asonetworkv1 "github.com/Azure/azure-service-operator/v2/api/network/v1api20201101"
 	"k8s.io/utils/ptr"
@@ -25,7 +26,6 @@ import (
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-azure/api/v1beta1"
 	"sigs.k8s.io/cluster-api-provider-azure/azure"
-	"sigs.k8s.io/cluster-api-provider-azure/azure/converters"
 	"sigs.k8s.io/cluster-api-provider-azure/azure/services/aso"
 	"sigs.k8s.io/cluster-api-provider-azure/util/slice"
 )
@@ -55,10 +55,56 @@ func postCreateOrUpdateResourceHook(_ context.Context, scope SubnetScope, subnet
 		return err
 	}
 
-	name := subnet.AzureName()
-	scope.UpdateSubnetID(name, ptr.Deref(subnet.Status.Id, ""))
-	scope.UpdateSubnetCIDRs(name, converters.GetSubnetAddresses(*subnet))
+	if subnet.Status.ProvisioningState != nil && *subnet.Status.ProvisioningState == asonetworkv1.ProvisioningState_STATUS_Succeeded {
+		name := subnet.AzureName()
+		fmt.Println("AZURE NAME IN POSTCREATEORUPDATERESOURCEHOOK", name)
+		fmt.Println("SUBNET NAME IN POSTCREATEORUPDATERESOURCEHOOK", subnet.Name)
+		// update the status of the capz azurecluster resource
+		// HACKTEST: only call UpdateSubnetID and UpdateSubnetCIDRs if azurecluster's CIDR == subnet.Status.AddressPrefix
+		// if default is getting called less and no longer are the cidr blocks empty then this is the bug
+		// scope.UpdateSubnetID(name, ptr.Deref(subnet.Status.Id, ""))
+		// scope.UpdateSubnetCIDRs(name, converters.GetSubnetAddresses(*subnet)) //updated this to be empty
 
+		if subnet.Status.AddressPrefix == nil {
+			fmt.Println("AddressPrefix is nil for subnet:", subnet.AzureName())
+			return nil
+		}
+		actualCIDR := *subnet.Status.AddressPrefix
+
+		// get the desired CIDRs for the subnet from the AzureCluster spec
+		var desiredCIDR string
+		found := false
+		for _, spec := range scope.SubnetSpecs() {
+			subnetSpec, ok := spec.(*SubnetSpec)
+			if !ok {
+				continue
+			}
+			if subnetSpec.Name == name {
+				if len(subnetSpec.CIDRs) > 0 {
+					desiredCIDR = subnetSpec.CIDRs[0] // Use the first CIDR block
+					found = true
+				}
+				break
+			}
+		}
+
+		// in the case no matching subnet is found
+		if !found {
+			fmt.Println("No matching subnet found in AzureCluster spec for subnet:", name)
+			return nil
+		}
+
+		fmt.Println("Desired Spec CIDR:", desiredCIDR)
+		fmt.Println("Actual Status CIDR:", actualCIDR)
+
+		if desiredCIDR == actualCIDR {
+			fmt.Println("CIDRs match for subnet:", subnet.AzureName())
+			scope.UpdateSubnetID(name, ptr.Deref(subnet.Status.Id, ""))
+			scope.UpdateSubnetCIDRs(name, []string{actualCIDR})
+		} else {
+			fmt.Printf("CIDRs do not match for subnet: %s. Desired: %s, Actual: %s\n", subnet.AzureName(), desiredCIDR, actualCIDR)
+		}
+	}
 	return nil
 }
 

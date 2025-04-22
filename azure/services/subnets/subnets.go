@@ -18,6 +18,7 @@ package subnets
 
 import (
 	"context"
+	"fmt"
 
 	asonetworkv1 "github.com/Azure/azure-service-operator/v2/api/network/v1api20201101"
 	"k8s.io/utils/ptr"
@@ -54,11 +55,21 @@ func postCreateOrUpdateResourceHook(_ context.Context, scope SubnetScope, subnet
 	if err != nil {
 		return err
 	}
+	if subnet.Status.ProvisioningState == nil || *subnet.Status.ProvisioningState != asonetworkv1.ProvisioningState_STATUS_Succeeded {
+		return nil
+	}
 
 	name := subnet.AzureName()
+	statusASOCIDRs := converters.GetSubnetAddresses(*subnet)
+	fmt.Printf("SUBNETS DEBUG: Subnet Name: %s, statusASO CIDRs: %v\n", name, statusASOCIDRs)
 	scope.UpdateSubnetID(name, ptr.Deref(subnet.Status.Id, ""))
-	scope.UpdateSubnetCIDRs(name, converters.GetSubnetAddresses(*subnet))
+	scope.UpdateSubnetCIDRs(name, statusASOCIDRs)
 
+	// if len(statusASOCIDRs) != 0 {
+	// 	scope.UpdateSubnetID(name, ptr.Deref(subnet.Status.Id, ""))
+	// 	scope.UpdateSubnetCIDRs(name, statusASOCIDRs) // this used to update the spec with the ASO status CIDRs
+	// 	fmt.Printf("StatusASOCIDRs not empty)\n")
+	// }
 	return nil
 }
 

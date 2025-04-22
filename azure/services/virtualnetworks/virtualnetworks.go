@@ -18,6 +18,7 @@ package virtualnetworks
 
 import (
 	"context"
+	"fmt"
 
 	asonetworkv1 "github.com/Azure/azure-service-operator/v2/api/network/v1api20201101"
 	"github.com/Azure/azure-service-operator/v2/pkg/common/labels"
@@ -71,7 +72,11 @@ func postCreateOrUpdateResourceHook(ctx context.Context, scope VNetScope, existi
 		return errors.Wrap(err, "failed to list subnets")
 	}
 	for _, subnet := range subnets.Items {
-		scope.UpdateSubnetCIDRs(subnet.AzureName(), converters.GetSubnetAddresses(subnet))
+		statusASOCIDRs := converters.GetSubnetAddresses(subnet)
+		fmt.Printf("VIRTUAL NETWORKS DEBUG: Updating Subnet CIDRs for Subnet: %s, CIDRs: %v\n", subnet.AzureName(), statusASOCIDRs)
+		if len(statusASOCIDRs) != 0 {
+			scope.UpdateSubnetCIDRs(subnet.AzureName(), statusASOCIDRs)
+		}
 	}
 	// Only update the vnet's CIDRBlocks when we also updated subnets' since the vnet is created before
 	// subnets to prevent an updated vnet CIDR from invalidating subnet CIDRs that were defaulted and do not
